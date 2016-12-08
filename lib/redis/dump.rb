@@ -1,3 +1,5 @@
+# encoding: utf-8
+
 unless defined?(RD_HOME)
   RD_HOME = File.expand_path(File.join(File.dirname(__FILE__), '..', '..') )
 end
@@ -17,6 +19,7 @@ class Redis
     @safe = true
     @chunk_size = 10000
     @with_optimizations = true
+    @database = 0
     class << self
       attr_accessor :debug, :safe, :host, :port, :chunk_size, :with_optimizations
       def ld(msg)
@@ -26,22 +29,20 @@ class Redis
         `ps -o rss= -p #{Process.pid}`.to_i # in kb
       end
     end
-    attr_accessor :dbs, :uri
+    attr_accessor :database, :uri
     attr_reader :redis_connections
-    def initialize(dbs=nil,uri="redis://#{Redis::Dump.host}:#{Redis::Dump.port}")
+    def initialize(database=0,uri="redis://#{Redis::Dump.host}:#{Redis::Dump.port}")
       @redis_connections = {}
       @uri = uri
-      unless dbs.nil?
-        @dbs = Range === dbs ? dbs : (dbs..dbs)
-        @dbs = (@dbs.first.to_i..@dbs.last.to_i) # enforce integers
-        @dbs.to_a.each { |db| redis(db) } # open_all_connections
+      unless database.nil?
+        @database = database
       end
     end
     def redis(db)
       redis_connections["#{uri}/#{db}"] ||= connect("#{uri}/#{db}")
     end
     def connect(this_uri)
-      #self.class.ld 'CONNECT: ' << this_uri
+      self.class.ld 'CONNECT: ' << this_uri
       Redis.connect :url => this_uri
     end
     
@@ -130,13 +131,10 @@ class Redis
     def load(string_or_stream, &each_record)
       count = 0
       Redis::Dump.ld " LOAD SOURCE: #{string_or_stream}"
+      this_redis = redis(@database.to_i)
       string_or_stream.read.each_line do |l|
         obj = Oj.load(l)
-        unless @dbs.member?(obj["db"].to_i)
-          Redis::Dump.ld "db out of range: #{obj["db"]}"
-          next
-        end
-        this_redis = redis(obj["db"])
+        #this_redis = redis(obj["db"])
         #Redis::Dump.ld "load[#{this_redis.hash}, #{obj}]"
         if each_record.nil?
           if Redis::Dump.safe && this_redis.exists(obj['key'])
@@ -151,6 +149,7 @@ class Redis
       end
       count
     end
+
     module ClassMethods
       def type(this_redis, key)
         type = this_redis.type key

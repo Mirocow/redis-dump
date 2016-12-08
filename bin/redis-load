@@ -44,7 +44,7 @@ class Redis::Dump::CLI
     obj.global.uri ||= 'redis://%s:%s' % [Redis::Dump.host, Redis::Dump.port]
     obj.global.uri = 'redis://' << obj.global.uri unless obj.global.uri.match(/^redis:\/\//)
     obj.global.database &&= obj.global.database.to_i
-    obj.global.database ||= (0..15)
+    obj.global.database ||= (0..99)
     Redis::Dump.ld "redis_uri: #{obj.global.uri} (#{obj.global.database})"
     Redis::Dump.ld "Process: #{$$}; Memory: #{Redis::Dump.memory_usage}" if Redis::Dump.debug
   end
