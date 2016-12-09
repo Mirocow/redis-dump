@@ -32,15 +32,11 @@ class Redis
     attr_accessor :database, :uri
     attr_reader :redis_connections
     def initialize(database=0,uri="redis://#{Redis::Dump.host}:#{Redis::Dump.port}")
-      @redis_connections = {}
-      unless dbs.nil?
-        @dbs = Range === dbs ? dbs : (dbs..dbs)
-        @dbs = (@dbs.first.to_i..@dbs.last.to_i) # enforce integers
-        @dbs.to_a.each { |db| redis(db) } # open_all_connections
-      end      
+      @redis_connections = {}    
       @uri = uri
       unless database.nil?
         @database = database
+        redis(database)
       end
     end
     def redis(db)
